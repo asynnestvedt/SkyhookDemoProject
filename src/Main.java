@@ -50,13 +50,14 @@ public class Main {
 
         Thread t1 = new Thread(new fetch(query1));
         Thread t2 = new Thread(new fetch(query2));
-        /**
-         * wait for cache to fill
-         */
         Thread t3 = new Thread(new fetch(query3));
 
         t1.start();
         t2.start();
+
+        /**
+         * wait for cache to fill before trying a nearby query
+         */
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {
