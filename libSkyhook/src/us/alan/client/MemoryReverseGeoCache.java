@@ -29,19 +29,29 @@ public class MemoryReverseGeoCache implements ReverseGeoCache {
 
     @Override
     public Address get(Point point, double dist) {
-        ConcurrentHashMap cache = getMapByHemisphere(point.latitude, point.longitude);
+        ConcurrentHashMap cache = getMapByHemisphere(point);
 
         double min = dist+1;
         Address cachedAddress = null;
 
-        Iterator i = cache.entrySet().iterator();
-        while(i.hasNext()) {
-            ConcurrentHashMap.Entry<String, Address> pair = (ConcurrentHashMap.Entry<String, Address>) i.next();
-            String[] key = pair.getKey().split("_");
-            Address testAddr = pair.getValue();
-            double testDist = GeoUtil.distance(point, new Point(Double.parseDouble(key[0]), Double.parseDouble(key[1])));
-            if (testDist <= dist && testDist < min) {
-                cachedAddress = testAddr;
+        /**
+         * check for exact location
+         */
+        cachedAddress = (Address) cache.get(makeKey(point));
+
+        /**
+         * check for closest location in search range
+         */
+        if (cachedAddress == null) {
+            Iterator i = cache.entrySet().iterator();
+            while(i.hasNext()) {
+                ConcurrentHashMap.Entry<String, Address> pair = (ConcurrentHashMap.Entry<String, Address>) i.next();
+                String[] key = pair.getKey().split("_");
+                Address testAddr = pair.getValue();
+                double testDist = GeoUtil.distance(point, new Point(Double.parseDouble(key[0]), Double.parseDouble(key[1])));
+                if (testDist <= dist && testDist < min) {
+                    cachedAddress = testAddr;
+                }
             }
         }
 
@@ -50,20 +60,20 @@ public class MemoryReverseGeoCache implements ReverseGeoCache {
 
     @Override
     public void put(Point point, Address address) {
-        ConcurrentHashMap cache = getMapByHemisphere(point.latitude, point.longitude);
-        cache.putIfAbsent(makeKey(point.latitude, point.longitude), address);
+        ConcurrentHashMap cache = getMapByHemisphere(point);
+        cache.putIfAbsent(makeKey(point), address);
     }
 
-    private String makeKey(double lat, double lng) {
-        return String.format ("%.6f_%.6f", lat, lng);
+    private static String makeKey(Point point) {
+        return String.format ("%.6f_%.6f", point.latitude, point.longitude);
     }
 
-    private ConcurrentHashMap getMapByHemisphere(double lat, double lng) {
-        if (lat <= 0) {
-            return lng <= 0 ? this.sw : this.se;
+    private ConcurrentHashMap getMapByHemisphere(Point point) {
+        if (point.latitude <= 0) {
+            return point.longitude <= 0 ? this.sw : this.se;
         }
 
-        return lng <= 0 ? this.nw : this.ne;
+        return point.longitude <= 0 ? this.nw : this.ne;
     }
 
 
